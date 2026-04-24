@@ -3,6 +3,7 @@
 # Configuration
 ENV_FILE="$HOME/.hermes/.env"
 FLAG_FILE="/tmp/hermes_update_postponed"
+HERMES_DIR="$HOME/.hermes/hermes-agent"
 
 # Load environment variables
 if [ -f "$ENV_FILE" ]; then
@@ -27,25 +28,49 @@ send_tg_message() {
     fi
 }
 
-# 1. Clean previous flag
+# 1. Check current and target versions
+if [ -d "$HERMES_DIR" ]; then
+    cd "$HERMES_DIR" || exit 1
+    # Get current version (hash or tag)
+    CURRENT_VERSION=$(git describe --tags --always 2>/dev/null || git log -1 --format="%h")
+    
+    # Fetch latest from remote to know what we are updating to
+    git fetch origin main --quiet 2>/dev/null
+    TARGET_VERSION=$(git log -1 --format="%h" origin/main 2>/dev/null)
+    
+    # Check if we are already up to date
+    if [ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]; then
+        # send_tg_message "ℹ️ *Hermes Auto-Update*\nHermes is already up-to-date at version \`$CURRENT_VERSION\`."
+        # Uncomment above to receive weekly "already up to date" messages, otherwise it exits silently.
+        exit 0
+    fi
+else
+    CURRENT_VERSION="Unknown"
+    TARGET_VERSION="Latest"
+fi
+
+# 2. Clean previous flag
 rm -f "$FLAG_FILE"
 
-# 2. Notify user
+# 3. Notify user
 send_tg_message "⚠️ *Hermes Automatic Update*
 A system update will start in 1 minute.
+*Current version:* \`$CURRENT_VERSION\`
+*Target version:* \`$TARGET_VERSION\`
+
 If you are currently using Hermes, simply reply: *« Postpone update »* or create the file \`/tmp/hermes_update_postponed\` to abort."
 
-# 3. Wait 60 seconds
+# 4. Wait 60 seconds
 sleep 60
 
-# 4. Check if postponed
+# 5. Check if postponed
 if [ -f "$FLAG_FILE" ]; then
-    send_tg_message "🛑 *Update postponed.* Procedure aborted."
+    send_tg_message "🛑 *Update postponed.* Procedure aborted. Staying on \`$CURRENT_VERSION\`."
     rm -f "$FLAG_FILE"
     exit 0
 fi
 
-# 5. Proceed with update
+# 6. Proceed with update
 send_tg_message "🔄 *Starting update...* (Gateway shutting down)"
 
 # Make sure hermes is in PATH
@@ -58,6 +83,26 @@ yes | hermes update
 # Safety mechanism to ensure python-dotenv is present (prevents gateway restart failures)
 $HOME/.hermes/hermes-agent/venv/bin/pip install python-dotenv
 
+# 7. Gather changes and restart
+if [ -d "$HERMES_DIR" ]; then
+    cd "$HERMES_DIR" || exit 1
+    NEW_VERSION=$(git describe --tags --always 2>/dev/null || git log -1 --format="%h")
+    # Get the last 5 commits that were pulled
+    CHANGELOG=$(git log ${CURRENT_VERSION}..HEAD --oneline -n 5 | sed 's/^/- /')
+    
+    if [ -z "$CHANGELOG" ]; then
+        CHANGELOG="- (No specific commit messages found or force-update)"
+    fi
+else
+    NEW_VERSION="Unknown"
+    CHANGELOG="- Unknown changes"
+fi
+
 hermes gateway start
 
-send_tg_message "✅ *Hermes update completed and gateway restarted!*"
+send_tg_message "✅ *Hermes update completed and gateway restarted!*
+
+*Updated to:* \`$NEW_VERSION\`
+
+*Recent changes:*
+$CHANGELOG"
