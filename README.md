@@ -3,7 +3,7 @@
 An automated weekly update script for your [Hermes Agent](https://github.com/giiibb/hermes-agent) running on a VPS. It notifies you via Telegram 1 minute before updating and gives you a chance to postpone the update if you are actively using the agent.
 
 ## Features
-- 🔄 **Weekly Automated Updates:** Runs every Sunday at 4:00 AM.
+- 🔄 **Daily Update Checks:** Runs every day at 4:00 AM. Exits silently if no update is needed.
 - 📱 **Telegram Notifications:** Tells you when it's about to update, when it's done, and if it was postponed.
 - 🛑 **Postpone Mechanism:** Cancel the update cleanly via a simple Telegram message to Hermes.
 - 🛡️ **Failsafe:** Re-installs `python-dotenv` explicitly to prevent gateway restart bugs.
@@ -30,7 +30,7 @@ Copy the `SKILL.md` provided in this repository and ask Hermes to add it to its 
 
 ## How it works
 
-1. At 4:00 AM on Sunday, the script triggers.
+1. At 4:00 AM every day, the script triggers and silently checks for updates.
 2. It sends a message to your `TELEGRAM_HOME_CHANNEL`.
 3. It waits for 60 seconds.
 4. If you tell Hermes to postpone (which creates the flag file), the script sees the file, sends an abort message, and stops.

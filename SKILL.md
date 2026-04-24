@@ -6,7 +6,7 @@ trigger: When the user asks to "postpone the update", "cancel the update", etc.,
 
 # Cancelling the Automated Update
 
-A cron script runs weekly to automatically update Hermes. It warns the user 60 seconds before executing the update.
+A cron script runs daily to automatically update Hermes. It warns the user 60 seconds before executing the update.
 If the user asks you to postpone or cancel this update, you MUST execute the following command to create the flag file that tells the script to abort:
 
 ```bash
